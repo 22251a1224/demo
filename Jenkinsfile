@@ -4,19 +4,29 @@ pipeline {
     stages {
         stage('Build') {
             steps {
-                echo 'Build Docker Image'
+                echo 'Building Docker Image...'
                 bat '''
-                    docker build -t formappnew .
+                    docker build -t imagecharm .
                 '''
             }
         }
 
-        stage('Run') {
+        stage('Deploy') {
             steps {
-                echo 'Run application in Docker container'
+                echo 'Deploying application in Docker container...'
                 bat '''
-                    docker rm -f mycontainer || exit 0
-                    docker run -d -p 5000:5000 --name mycontainer formappnew
+                    docker stop myycontainer || true
+                    docker rm myycontainer || true
+                    docker run -d -p 5000:5000 --name myycontainer imagecharm
+                '''
+            }
+        }
+
+        stage('Health Check') {
+            steps {
+                echo 'Checking if Flask app is running...'
+                bat '''
+                    curl http://localhost:5000 || exit 1
                 '''
             }
         }
@@ -24,10 +34,10 @@ pipeline {
 
     post {
         failure {
-            echo 'Pipeline failed. please check the logs.'
+            echo '❌ Pipeline failed. Please check the logs.'
         }
         success {
-            echo 'Pipeline executed successfully.'
+            echo '✅ Pipeline executed successfully and app is running.'
         }
     }
 }
