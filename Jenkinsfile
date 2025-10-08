@@ -2,42 +2,41 @@ pipeline {
     agent any
 
     stages {
-        stage('Build') {
+        stage('Build Docker Image') {
             steps {
-                echo 'Building Docker Image...'
-                bat '''
-                    docker build -t imagecharm .
-                '''
+                echo "Build Docker Image"
+                bat "docker build -t kubedemoapp:v1 ."
             }
         }
 
-        stage('Deploy') {
+        stage('Docker Login') {
             steps {
-                echo 'Deploying application in Docker container...'
-                bat '''
-                    docker stop myycontainer || true
-                    docker rm myycontainer || true
-                    docker run -d -p 5000:5000 --name myycontainer imagecharm
-                '''
+                bat 'docker login -u charmitharangu -p Charm@2005'
             }
         }
 
-        stage('Health Check') {
+        stage('Push Docker Image to Docker Hub') {
             steps {
-                echo 'Checking if Flask app is running...'
-                bat '''
-                    curl http://localhost:5000 || exit 1
-                '''
+                echo "Push Docker Image to Docker Hub"
+                bat "docker tag kubedemoapp:v1 charmitharangu/sample1:kubeimage1"
+                bat "docker push charmitharangu/sample1:kubeimage1"
+            }
+        }
+
+        stage('Deploy to Kubernetes') {
+            steps {
+                bat 'kubectl apply -f deployment.yaml --validate=false'
+                bat 'kubectl apply -f service.yaml'
             }
         }
     }
 
     post {
-        failure {
-            echo '❌ Pipeline failed. Please check the logs.'
-        }
         success {
-            echo '✅ Pipeline executed successfully and app is running.'
+            echo 'Successful'
+        }
+        failure {
+            echo 'Unsuccessful'
         }
     }
 }
